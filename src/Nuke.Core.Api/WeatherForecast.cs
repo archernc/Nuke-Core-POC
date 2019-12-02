@@ -1,6 +1,6 @@
 using System;
 
-namespace Nuke.Core.App
+namespace Nuke.Core.Api
 {
     public class WeatherForecast
     {
