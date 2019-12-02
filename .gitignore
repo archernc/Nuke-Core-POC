@@ -293,10 +293,10 @@ node_modules/
 _Pvt_Extensions
 
 # Paket dependency manager
-#.paket/paket.exe
 .paket/*
-!.paket/Paket.Restore.targets
 paket-files/
+!.paket/paket.exe
+!.paket/Paket.Restore.targets
 
 # FAKE - F# Make
 .fake/
