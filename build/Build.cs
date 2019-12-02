@@ -1,5 +1,6 @@
 using Nuke.Common;
 using Nuke.Common.CI;
+using Nuke.Common.CI.TeamCity;
 using Nuke.Common.Execution;
 using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
@@ -10,6 +11,7 @@ using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Tools.GitVersion;
 using Nuke.Common.Tools.InspectCode;
 using Nuke.Common.Tools.MSBuild;
+using Nuke.Common.Tools.NuGet;
 using Nuke.Common.Tools.Octopus;
 using Nuke.Common.Tools.Paket;
 using Nuke.Common.Tools.ReportGenerator;
@@ -23,6 +25,7 @@ using static Nuke.Common.IO.FileSystemTasks;
 using static Nuke.Common.IO.PathConstruction;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 using static Nuke.Common.Tools.InspectCode.InspectCodeTasks;
+//using static Nuke.Common.Tools.NuGet.NuGetTasks;
 using static Nuke.Common.Tools.Octopus.OctopusTasks;
 using static Nuke.Common.Tools.Paket.PaketTasks;
 using static Nuke.Common.Tools.ReportGenerator.ReportGeneratorTasks;
@@ -39,13 +42,51 @@ class Build : NukeBuild
 
 	public static int Main() => Execute<Build>(x => x.NuGet_Push);
 
+	protected override void OnBuildCreated()
+	{
+		Logger.Info(nameof(OnBuildCreated));
+	}
+	protected override void OnBuildInitialized()
+	{
+		Logger.Info(nameof(OnBuildInitialized));
+	}
+	protected override void OnBuildFinished()
+	{
+		Logger.Info(nameof(OnBuildFinished));
+	}
+	protected override void OnTargetStart(string target)
+	{
+		Logger.Info(nameof(OnTargetStart));
+	}
+	protected override void OnTargetAbsent(string target)
+	{
+		Logger.Info(nameof(OnTargetAbsent));
+	}
+	protected override void OnTargetSkipped(string target)
+	{
+		Logger.Info(nameof(OnTargetSkipped));
+	}
+	protected override void OnTargetExecuted(string target)
+	{
+		Logger.Info(nameof(OnTargetExecuted));
+	}
+	protected override void OnTargetFailed(string target)
+	{
+		Logger.Info(nameof(OnTargetFailed));
+	}
+
+
 	[Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
 	readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
-	//[CI] readonly TeamCity TeamCity;
+	[CI] readonly TeamCity TeamCity;
 	[Solution] readonly Solution Solution;
 	//[GitRepository] readonly GitRepository GitRepository;
 	[GitVersion] readonly GitVersion GitVersion;
+
+	// TODO: try to replace the inline locators
+	//[LocalExecutable("./.paket/paket.exe")]
+	//readonly Tool Paket;
 
 	AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
 	AbsolutePath SourceDirectory => RootDirectory / "src";
@@ -69,6 +110,9 @@ class Build : NukeBuild
 			);
 	});
 
+	/// <summary>
+	/// Removes previously built artifacts
+	/// </summary>
 	Target Clean => _ => _
 	.Before(Restore)
 	.Executes(() =>
@@ -83,6 +127,9 @@ class Build : NukeBuild
 	/// </summary>
 	Target Restore => _ => _.Executes(() => DotNetRestore(_ => _.SetProjectFile(Solution)));
 
+	/// <summary>
+	/// Build
+	/// </summary>
 	Target Compile => _ => _
 		.DependsOn(Restore)
 		.Executes(() =>
@@ -99,6 +146,9 @@ class Build : NukeBuild
 
 	// http://www.nuke.build/docs/authoring-builds/ci-integration.html#partitioning
 	[Partition(2)] readonly Partition TestPartition;
+	/// <summary>
+	/// Runs all tests and generates report file(s)
+	/// </summary>
 	Target Test => _ => _
 		.DependsOn(Compile)
 		.Produces($"{ArtifactsDirectory}/*.trx")
@@ -145,38 +195,41 @@ class Build : NukeBuild
 
 	string CoverageReportDirectory => $"{ArtifactsDirectory}/coverage-report";
 	string CoverageReportArchive => $"{ArtifactsDirectory}/coverage-report.zip";
+	/// <summary>
+	/// Generates code coverage reports based on <see cref="Test">Test</see> results
+	/// </summary>
 	Target Coverage => _ => _
-		.DependsOn(Test)
-		//.TriggeredBy(Test)
-		.Consumes(Test)
-		.Produces(CoverageReportArchive)
-		.Executes(() =>
-		{
-			// TODO: Handle error when XML files are not present
-			ReportGenerator(_ => _
-				//.SetFramework("netcoreapp2.1")
-				.SetReports($"{ArtifactsDirectory}/*.xml")
-				.SetReportTypes(ReportTypes.Html, ReportTypes.TeamCitySummary, ReportTypes.TextSummary)
-				.SetTargetDirectory(CoverageReportDirectory)
-			);
+	   .DependsOn(Test)
+	   //.TriggeredBy(Test)
+	   .Consumes(Test)
+	   .Produces(CoverageReportArchive)
+	   .Executes(() =>
+	   {
+		   // TODO: Handle error when XML files are not present
+		   ReportGenerator(_ => _
+			  //.SetFramework("netcoreapp2.1")
+			  .SetReports($"{ArtifactsDirectory}/*.xml")
+			  .SetReportTypes(ReportTypes.Html, ReportTypes.TeamCitySummary, ReportTypes.TextSummary)
+			  .SetTargetDirectory(CoverageReportDirectory)
+		  );
 
-			//ArtifactsDirectory.GlobFiles("*.xml").ForEach(x =>
-			//    Console.WriteLine(x.ToString())
-			//    //AzurePipelines?.PublishCodeCoverage(
-			//    //    AzurePipelinesCodeCoverageToolType.Cobertura,
-			//    //    x,
-			//    //    CoverageReportDirectory)
-			//    );
+		   //ArtifactsDirectory.GlobFiles("*.xml").ForEach(x =>
+		   //    Console.WriteLine(x.ToString())
+		   //    //AzurePipelines?.PublishCodeCoverage(
+		   //    //    AzurePipelinesCodeCoverageToolType.Cobertura,
+		   //    //    x,
+		   //    //    CoverageReportDirectory)
+		   //    );
 
-			CompressZip(
-				directory: CoverageReportDirectory,
-				archiveFile: CoverageReportArchive,
-				fileMode: FileMode.Create);
-		});
-
+		   CompressZip(
+			  directory: CoverageReportDirectory,
+			  archiveFile: CoverageReportArchive,
+			  fileMode: FileMode.Create);
+	   });
 
 	/// <summary>
-	/// Creates NuGet package(s) that can be pushed to NuGet server
+	/// Creates NuGet package(s) that can be pushed to NuGet server.
+	/// Implements Paket
 	/// </summary>
 	Target NuGet_Pack => _ => _
 		.DependsOn(Test)
@@ -190,45 +243,53 @@ class Build : NukeBuild
 				.SetPackageVersion(GitVersion.NuGetVersionV2)
 				.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
 			);
-			/*
-			DotNetPack(_ => _
-				.SetProject(Solution)
-				.SetNoBuild(ExecutingTargets.Contains(Compile))
-				.SetConfiguration(Configuration)
-				.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
-				.SetVersion(GitVersion.NuGetVersionV2)
-				//.SetPackageReleaseNotes(GetNuGetReleaseNotes($"{RootDirectory}/CHANGELOG.md", GitRepository))
-				);
-			*/
+
+			//DotNetPack(_ => _
+			//	.SetProject(Solution)
+			//	.SetNoBuild(ExecutingTargets.Contains(Compile))
+			//	.SetConfiguration(Configuration)
+			//	.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
+			//	.SetVersion(GitVersion.NuGetVersionV2)
+			//	//.SetPackageReleaseNotes(GetNuGetReleaseNotes($"{RootDirectory}/CHANGELOG.md", GitRepository))
+			//);
 		});
 
 	/// <summary>
-	/// Pushes the generated NuGet packages to the NuGet server
-	/// https://nuke.build/api/Nuke.Common/Nuke.Common.Tools.Paket.PaketTasks.html#Nuke_Common_Tools_Paket_PaketTasks_PaketPush_Nuke_Common_Tooling_Configure_Nuke_Common_Tools_Paket_PaketPushSettings__
+	/// Pushes all packages generated from <see cref="NuGet_Pack">NuGet_Pack</see> to the NuGet repository
+	/// Implements DotNetNuGet
 	/// </summary>
-	// TODO
 	Target NuGet_Push => _ => _
-	//.DependsOn(NuGet_Pack)
-	//.Consumes(NuGet_Pack)
+	.Consumes(NuGet_Pack)
 	.Executes(() =>
 	{
-		(ArtifactsDirectory / "NuGet").GlobFiles("*.nupkg").ForEach(p =>
+		var packages = (ArtifactsDirectory / "NuGet").GlobFiles("*.nupkg");
+		if (packages.Any())
 		{
-
 			DotNetNuGetPush(_ => _
 				.SetApiKey("oy2cyqeqkfqnzll5f36qj37ojxdvtfyuzaaczn5sfmbpbm")
 				.SetSource("https://www.nuget.org/api/v2/package")
-				.SetTargetPath(p.ToString())
+				.CombineWith(packages, (_, v) => _.SetTargetPath(v)),
+				degreeOfParallelism: 5,
+				completeOnFailure: true
 			);
+
+			//NuGetPush(_ => _
+			//	.SetApiKey("oy2cyqeqkfqnzll5f36qj37ojxdvtfyuzaaczn5sfmbpbm")
+			//	.SetSource("https://www.nuget.org/api/v2/package")
+			//	.CombineWith(packages, (_, v) => _.SetTargetPath(v)),
+			//	degreeOfParallelism: 5,
+			//	completeOnFailure: true
+			//);
 
 			//PaketPush(_ => _
 			//	.SetToolPath($"{RootDirectory}/.paket/paket.exe")
 			//	.SetApiKey("oy2cyqeqkfqnzll5f36qj37ojxdvtfyuzaaczn5sfmbpbm")
 			//	.SetUrl("https://www.nuget.org/api/v2/package")
-			//	.SetFile(p.ToString())
+			//	.CombineWith(packages, (_, v) => _.SetFile(v)),
+			//	degreeOfParallelism: 5,
+			//	completeOnFailure: true
 			//);
-
-		});
+		}
 	});
 
 	/// <summary>
@@ -257,6 +318,9 @@ class Build : NukeBuild
 			});
 	});
 
+	/// <summary>
+	/// Generates NuGet packages for Octopus Deploy
+	/// </summary>
 	Target Octo_Pack => _ => _
 	.DependsOn(Publish)
 	.Produces($"{ArtifactsDirectory}/Octo/*.nupkg")
@@ -279,9 +343,38 @@ class Build : NukeBuild
 		// TODO: Docker packages may need a different process
 	});
 
-	// TODO
-	Target Octo_Push => _ => _.DependsOn(Octo_Pack).Executes(() => { });
+	/// <summary>
+	/// Pushes all packages generated from <see cref="Octo_Pack">Octo_Pack</see> to the Octopus repository
+	/// </summary>
+	Target Octo_Push => _ => _
+	.Consumes(Octo_Pack)
+	.Executes(() =>
+	{
+		var packages = (ArtifactsDirectory / "Octo").GlobFiles("*.nupkg");
+		if (packages.Any())
+		{
+			OctopusPush(_ => _
+			.SetServer("http://icerep01:8081/")
+			.SetApiKey("API-LPKQA2IE2C0XSRSRCA5M4HP7Z0")
+			.EnableReplaceExisting() // keeps from failing the build
+			.CombineWith(packages, (_, v) => _.SetPackage(v))
+			);
+		}
+	});
 
-	// TODO
-	Target Octo_Create_Release => _ => _.DependsOn(Octo_Push).Executes(() => { });
+
+	Target Octo_Create_Release => _ => _
+	//.DependsOn(Octo_Push)
+	.Executes(() =>
+	{
+		OctopusCreateRelease(_ => _
+		.SetServer("http://icerep01:8081/")
+		.SetApiKey("API-LPKQA2IE2C0XSRSRCA5M4HP7Z0")
+		.SetProject("Nuke.Core")
+		.SetEnableServiceMessages(true)
+		.SetDefaultPackageVersion(GitVersion.AssemblySemVer)
+		.SetVersion(GitVersion.AssemblySemVer)
+		.SetReleaseNotes("")
+		);
+	});
 }
