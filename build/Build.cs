@@ -82,7 +82,7 @@ class Build : NukeBuild
 	[CI] readonly TeamCity TeamCity;
 	[Solution] readonly Solution Solution;
 	//[GitRepository] readonly GitRepository GitRepository;
-	[GitVersion] readonly GitVersion GitVersion;
+	//[GitVersion] readonly GitVersion GitVersion;
 
 	// TODO: try to replace the inline locators
 	//[LocalExecutable("./.paket/paket.exe")]
@@ -134,14 +134,14 @@ class Build : NukeBuild
 		.DependsOn(Restore)
 		.Executes(() =>
 		{
-			DotNetBuild(_ => _
-				.SetProjectFile(Solution)
-				.SetConfiguration(Configuration)
-				.SetAssemblyVersion(GitVersion.AssemblySemVer)
-				.SetFileVersion(GitVersion.AssemblySemFileVer)
-				.SetInformationalVersion(GitVersion.InformationalVersion)
-				.EnableNoRestore() // Doesn't perform an implicit restore during build
-			);
+			//DotNetBuild(_ => _
+			//	.SetProjectFile(Solution)
+			//	.SetConfiguration(Configuration)
+			//	.SetAssemblyVersion(GitVersion.AssemblySemVer)
+			//	.SetFileVersion(GitVersion.AssemblySemFileVer)
+			//	.SetInformationalVersion(GitVersion.InformationalVersion)
+			//	.EnableNoRestore() // Doesn't perform an implicit restore during build
+			//);
 		});
 
 	// http://www.nuke.build/docs/authoring-builds/ci-integration.html#partitioning
@@ -240,7 +240,8 @@ class Build : NukeBuild
 				.SetToolPath($"{RootDirectory}/.paket/paket.exe")
 				.SetLockDependencies(true)
 				.SetBuildConfiguration(Configuration)
-				.SetPackageVersion(GitVersion.NuGetVersionV2)
+				//.SetPackageVersion(GitVersion.NuGetVersionV2)
+				.SetPackageVersion("1.0.0.0")
 				.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
 			);
 
@@ -310,9 +311,12 @@ class Build : NukeBuild
 					.SetWorkingDirectory(p.Directory)
 					.SetNoRestore(ExecutingTargets.Contains(Restore))
 					.SetConfiguration(Configuration)
-					.SetAssemblyVersion(GitVersion.AssemblySemVer)
-					.SetFileVersion(GitVersion.AssemblySemFileVer)
-					.SetInformationalVersion(GitVersion.InformationalVersion)
+					//.SetAssemblyVersion(GitVersion.AssemblySemVer)
+					//.SetFileVersion(GitVersion.AssemblySemFileVer)
+					//.SetInformationalVersion(GitVersion.InformationalVersion)
+					.SetAssemblyVersion("1.0.0.0")
+					.SetFileVersion("1.0.0.0")
+					.SetInformationalVersion("1.0.0.0")
 					.SetOutput($"{ArtifactsDirectory}/published-app/{p.Name}")
 				);
 			});
@@ -336,7 +340,8 @@ class Build : NukeBuild
 			.SetOutputFolder($"{ArtifactsDirectory}/Octo")
 			.SetTitle(p.Name)
 			.SetId(p.Name)
-			.SetVersion(GitVersion.NuGetVersionV2)
+			//.SetVersion(GitVersion.NuGetVersionV2)
+			.SetVersion("1.0.0.0")
 		);
 		});
 
@@ -372,8 +377,10 @@ class Build : NukeBuild
 		.SetApiKey("API-LPKQA2IE2C0XSRSRCA5M4HP7Z0")
 		.SetProject("Nuke.Core")
 		.SetEnableServiceMessages(true)
-		.SetDefaultPackageVersion(GitVersion.AssemblySemVer)
-		.SetVersion(GitVersion.AssemblySemVer)
+		//.SetDefaultPackageVersion(GitVersion.AssemblySemVer)
+		//.SetVersion(GitVersion.AssemblySemVer)
+		.SetDefaultPackageVersion("1.0.0.0")
+		.SetVersion("1.0.0.0")
 		.SetReleaseNotes("")
 		);
 	});
