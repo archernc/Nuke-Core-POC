@@ -366,7 +366,7 @@ class Build : NukeBuild
 		{
 			OctopusPush(_ => _
 			.SetServer("http://icerep01:8081/")
-			.SetApiKey("API-LPKQA2IE2C0XSRSRCA5M4HP7Z0")
+			.SetApiKey("API-IUYK06GRIEZ0CPECQQ7V0FURMY")
 			.EnableReplaceExisting() // keeps from failing the build
 			.CombineWith(packages, (_, v) => _.SetPackage(v))
 			);
@@ -380,7 +380,7 @@ class Build : NukeBuild
 	{
 		OctopusCreateRelease(_ => _
 		.SetServer("http://icerep01:8081/")
-		.SetApiKey("API-LPKQA2IE2C0XSRSRCA5M4HP7Z0")
+		.SetApiKey("API-IUYK06GRIEZ0CPECQQ7V0FURMY")
 		.SetProject("Nuke.Core")
 		.SetEnableServiceMessages(true)
 		.SetDefaultPackageVersion(GitVersion.AssemblySemVer)
