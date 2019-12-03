@@ -45,34 +45,42 @@ class Build : NukeBuild
 	protected override void OnBuildCreated()
 	{
 		Logger.Info(nameof(OnBuildCreated));
+		base.OnBuildCreated();
 	}
 	protected override void OnBuildInitialized()
 	{
 		Logger.Info(nameof(OnBuildInitialized));
+		base.OnBuildInitialized();
 	}
 	protected override void OnBuildFinished()
 	{
 		Logger.Info(nameof(OnBuildFinished));
+		base.OnBuildFinished();
 	}
 	protected override void OnTargetStart(string target)
 	{
 		Logger.Info(nameof(OnTargetStart));
+		base.OnTargetStart(target);
 	}
 	protected override void OnTargetAbsent(string target)
 	{
 		Logger.Info(nameof(OnTargetAbsent));
+		base.OnTargetAbsent(target);
 	}
 	protected override void OnTargetSkipped(string target)
 	{
 		Logger.Info(nameof(OnTargetSkipped));
+		base.OnTargetSkipped(target);
 	}
 	protected override void OnTargetExecuted(string target)
 	{
 		Logger.Info(nameof(OnTargetExecuted));
+		base.OnTargetExecuted(target);
 	}
 	protected override void OnTargetFailed(string target)
 	{
 		Logger.Info(nameof(OnTargetFailed));
+		base.OnTargetFailed(target);
 	}
 
 
