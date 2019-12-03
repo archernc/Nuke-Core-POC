@@ -383,8 +383,8 @@ class Build : NukeBuild
 		.SetApiKey("API-IUYK06GRIEZ0CPECQQ7V0FURMY")
 		.SetProject("Nuke.Core")
 		.SetEnableServiceMessages(true)
-		.SetDefaultPackageVersion(GitVersion.AssemblySemFileVer)
-		.SetVersion(GitVersion.AssemblySemFileVer)
+		.SetDefaultPackageVersion(GitVersion.NuGetVersionV2)
+		.SetVersion(GitVersion.NuGetVersionV2)
 		.SetReleaseNotes("")
 		);
 	});
