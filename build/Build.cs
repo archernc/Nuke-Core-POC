@@ -347,6 +347,7 @@ class Build : NukeBuild
 			.SetTitle(p.Name)
 			.SetId(p.Name)
 			.SetVersion(GitVersion.NuGetVersionV2)
+			.SetOverwrite(true)
 		);
 		});
 
