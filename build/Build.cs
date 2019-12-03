@@ -268,6 +268,7 @@ class Build : NukeBuild
 	/// Implements DotNetNuGet
 	/// </summary>
 	Target NuGet_Push => _ => _
+	.DependsOn(NuGet_Pack)
 	.Consumes(NuGet_Pack)
 	.Executes(() =>
 	{
