@@ -139,18 +139,18 @@ class Build : NukeBuild
 	/// Build
 	/// </summary>
 	Target Compile => _ => _
-		.DependsOn(Restore)
-		.Executes(() =>
-		{
-			DotNetBuild(_ => _
-				.SetProjectFile(Solution)
-				.SetConfiguration(Configuration)
-				.SetAssemblyVersion(GitVersion.AssemblySemVer)
-				.SetFileVersion(GitVersion.AssemblySemFileVer)
-				.SetInformationalVersion(GitVersion.InformationalVersion)
-				.EnableNoRestore() // Doesn't perform an implicit restore during build
-			);
-		});
+	.DependsOn(Restore)
+	.Executes(() =>
+	{
+		DotNetBuild(_ => _
+			.SetProjectFile(Solution)
+			.SetConfiguration(Configuration)
+			.SetAssemblyVersion(GitVersion.AssemblySemVer)
+			.SetFileVersion(GitVersion.AssemblySemFileVer)
+			.SetInformationalVersion(GitVersion.InformationalVersion)
+			.EnableNoRestore() // Doesn't perform an implicit restore during build
+		);
+	});
 
 	// http://www.nuke.build/docs/authoring-builds/ci-integration.html#partitioning
 	[Partition(2)] readonly Partition TestPartition;
@@ -158,48 +158,48 @@ class Build : NukeBuild
 	/// Runs all tests and generates report file(s)
 	/// </summary>
 	Target Test => _ => _
-		.DependsOn(Compile)
-		.Produces($"{ArtifactsDirectory}/*.trx")
-		.Produces($"{ArtifactsDirectory}/*.xml")
-		.Partition(() => TestPartition)
-		.Executes(() =>
-		{
-			DotNetTest(_ => _
-				.SetConfiguration(Configuration)
-				.SetNoBuild(InvokedTargets.Contains(Compile))
-				.ResetVerbosity()
-				.SetResultsDirectory(ArtifactsDirectory)
+	.DependsOn(Compile)
+	.Produces($"{ArtifactsDirectory}/*.trx")
+	.Produces($"{ArtifactsDirectory}/*.xml")
+	.Partition(() => TestPartition)
+	.Executes(() =>
+	{
+		DotNetTest(_ => _
+			.SetConfiguration(Configuration)
+			.SetNoBuild(InvokedTargets.Contains(Compile))
+			.ResetVerbosity()
+			.SetResultsDirectory(ArtifactsDirectory)
+			.When(InvokedTargets.Contains(Coverage) || IsServerBuild,
+				_ => _
+				.SetProperty("CollectCoverage", propertyValue: true)
+				// CoverletOutputFormat: json (default), lcov, opencover, cobertura, teamcity
+				.SetProperty("CoverletOutputFormat", "teamcity%2copencover")
+				//.EnableCollectCoverage()
+				//.SetCoverletOutputFormat(CoverletOutputFormat.teamcity)
+				.When(IsServerBuild, _ => _
+					.SetProperty("UseSourceLink", propertyValue: true)
+					//.EnableUseSourceLink()
+					)
+				)
+			.CombineWith(TestPartition.GetCurrent(Solution.GetProjects("*.UnitTest")), (_, v) => _
+				.SetProjectFile(v)
+				.SetLogger($"trx;LogFileName={v.Name}.trx")
 				.When(InvokedTargets.Contains(Coverage) || IsServerBuild,
 					_ => _
-					.SetProperty("CollectCoverage", propertyValue: true)
-					// CoverletOutputFormat: json (default), lcov, opencover, cobertura, teamcity
-					.SetProperty("CoverletOutputFormat", "teamcity%2copencover")
-					//.EnableCollectCoverage()
-					//.SetCoverletOutputFormat(CoverletOutputFormat.teamcity)
-					.When(IsServerBuild, _ => _
-						.SetProperty("UseSourceLink", propertyValue: true)
-						//.EnableUseSourceLink()
-						)
+					.SetProperty("CoverletOutput", $"{ArtifactsDirectory}/{v.Name}.xml")
+					//.SetCoverletOutput(ArtifactsDirectory / $"{v.Name}.xml")
 					)
-				.CombineWith(TestPartition.GetCurrent(Solution.GetProjects("*.UnitTest")), (_, v) => _
-					.SetProjectFile(v)
-					.SetLogger($"trx;LogFileName={v.Name}.trx")
-					.When(InvokedTargets.Contains(Coverage) || IsServerBuild,
-						_ => _
-						.SetProperty("CoverletOutput", $"{ArtifactsDirectory}/{v.Name}.xml")
-						//.SetCoverletOutput(ArtifactsDirectory / $"{v.Name}.xml")
-						)
-					)
-				);
+				)
+			);
 
-			//ArtifactsDirectory.GlobFiles("*.trx").ForEach(x =>
-			//    Console.WriteLine(x.ToString())
-			//    //AzurePipelines?.PublishTestResults(
-			//    //    type: AzurePipelinesTestResultsType.VSTest,
-			//    //    title: $"{Path.GetFileNameWithoutExtension(x)} ({AzurePipelines.StageDisplayName})",
-			//    //    files: new string[] { x })
-			//    );
-		});
+		//ArtifactsDirectory.GlobFiles("*.trx").ForEach(x =>
+		//    Console.WriteLine(x.ToString())
+		//    //AzurePipelines?.PublishTestResults(
+		//    //    type: AzurePipelinesTestResultsType.VSTest,
+		//    //    title: $"{Path.GetFileNameWithoutExtension(x)} ({AzurePipelines.StageDisplayName})",
+		//    //    files: new string[] { x })
+		//    );
+	});
 
 	string CoverageReportDirectory => $"{ArtifactsDirectory}/coverage-report";
 	string CoverageReportArchive => $"{ArtifactsDirectory}/coverage-report.zip";
@@ -207,61 +207,61 @@ class Build : NukeBuild
 	/// Generates code coverage reports based on <see cref="Test">Test</see> results
 	/// </summary>
 	Target Coverage => _ => _
-	   .DependsOn(Test)
-	   //.TriggeredBy(Test)
-	   .Consumes(Test)
-	   .Produces(CoverageReportArchive)
-	   .Executes(() =>
-	   {
-		   // TODO: Handle error when XML files are not present
-		   ReportGenerator(_ => _
-			  //.SetFramework("netcoreapp2.1")
-			  .SetReports($"{ArtifactsDirectory}/*.xml")
-			  .SetReportTypes(ReportTypes.Html, ReportTypes.TeamCitySummary, ReportTypes.TextSummary)
-			  .SetTargetDirectory(CoverageReportDirectory)
-		  );
+	.DependsOn(Test)
+	//.TriggeredBy(Test)
+	.Consumes(Test)
+	.Produces(CoverageReportArchive)
+	.Executes(() =>
+	{
+		// TODO: Handle error when XML files are not present
+		ReportGenerator(_ => _
+			//.SetFramework("netcoreapp2.1")
+			.SetReports($"{ArtifactsDirectory}/*.xml")
+			.SetReportTypes(ReportTypes.Html, ReportTypes.TeamCitySummary, ReportTypes.TextSummary)
+			.SetTargetDirectory(CoverageReportDirectory)
+		);
 
-		   //ArtifactsDirectory.GlobFiles("*.xml").ForEach(x =>
-		   //    Console.WriteLine(x.ToString())
-		   //    //AzurePipelines?.PublishCodeCoverage(
-		   //    //    AzurePipelinesCodeCoverageToolType.Cobertura,
-		   //    //    x,
-		   //    //    CoverageReportDirectory)
-		   //    );
+		//ArtifactsDirectory.GlobFiles("*.xml").ForEach(x =>
+		//    Console.WriteLine(x.ToString())
+		//    //AzurePipelines?.PublishCodeCoverage(
+		//    //    AzurePipelinesCodeCoverageToolType.Cobertura,
+		//    //    x,
+		//    //    CoverageReportDirectory)
+		//    );
 
-		   CompressZip(
-			  directory: CoverageReportDirectory,
-			  archiveFile: CoverageReportArchive,
-			  fileMode: FileMode.Create);
-	   });
+		CompressZip(
+			directory: CoverageReportDirectory,
+			archiveFile: CoverageReportArchive,
+			fileMode: FileMode.Create);
+	});
 
 	/// <summary>
 	/// Creates NuGet package(s) that can be pushed to NuGet server.
 	/// Implements Paket
 	/// </summary>
 	Target NuGet_Pack => _ => _
-		.DependsOn(Test)
-		.Produces($"{ArtifactsDirectory}/NuGet/*.nupkg")
-		.Executes(() =>
-		{
-			PaketPack(_ => _
-				.SetToolPath($"{RootDirectory}/.paket/paket.exe")
-				.SetLockDependencies(true)
-				.SetBuildConfiguration(Configuration)
-				.SetPackageVersion(GitVersion.NuGetVersionV2)
-				//.SetPackageVersion("1.0.0.0")
-				.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
-			);
+	.DependsOn(Test)
+	.Produces($"{ArtifactsDirectory}/NuGet/*.nupkg")
+	.Executes(() =>
+	{
+		PaketPack(_ => _
+			.SetToolPath($"{RootDirectory}/.paket/paket.exe")
+			.SetLockDependencies(true)
+			.SetBuildConfiguration(Configuration)
+			.SetPackageVersion(GitVersion.NuGetVersionV2)
+			//.SetPackageVersion("1.0.0.0")
+			.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
+		);
 
-			//DotNetPack(_ => _
-			//	.SetProject(Solution)
-			//	.SetNoBuild(ExecutingTargets.Contains(Compile))
-			//	.SetConfiguration(Configuration)
-			//	.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
-			//	.SetVersion(GitVersion.NuGetVersionV2)
-			//	//.SetPackageReleaseNotes(GetNuGetReleaseNotes($"{RootDirectory}/CHANGELOG.md", GitRepository))
-			//);
-		});
+		//DotNetPack(_ => _
+		//	.SetProject(Solution)
+		//	.SetNoBuild(ExecutingTargets.Contains(Compile))
+		//	.SetConfiguration(Configuration)
+		//	.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
+		//	.SetVersion(GitVersion.NuGetVersionV2)
+		//	//.SetPackageReleaseNotes(GetNuGetReleaseNotes($"{RootDirectory}/CHANGELOG.md", GitRepository))
+		//);
+	});
 
 	/// <summary>
 	/// Pushes all packages generated from <see cref="NuGet_Pack">NuGet_Pack</see> to the NuGet repository
