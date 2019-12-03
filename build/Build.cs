@@ -356,6 +356,7 @@ class Build : NukeBuild
 	/// Pushes all packages generated from <see cref="Octo_Pack">Octo_Pack</see> to the Octopus repository
 	/// </summary>
 	Target Octo_Push => _ => _
+	.DependsOn(Octo_Pack)
 	.Consumes(Octo_Pack)
 	.Executes(() =>
 	{
