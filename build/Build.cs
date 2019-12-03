@@ -40,7 +40,7 @@ class Build : NukeBuild
 	///   - Microsoft VisualStudio     https://nuke.build/visualstudio
 	///   - Microsoft VSCode           https://nuke.build/vscode
 
-	public static int Main() => Execute<Build>(x => x.Octo_Push);
+	public static int Main() => Execute<Build>(x => x.Octo_Create_Release);
 
 	protected override void OnBuildCreated()
 	{
