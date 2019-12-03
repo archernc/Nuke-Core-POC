@@ -40,7 +40,7 @@ class Build : NukeBuild
 	///   - Microsoft VisualStudio     https://nuke.build/visualstudio
 	///   - Microsoft VSCode           https://nuke.build/vscode
 
-	public static int Main() => Execute<Build>(x => x.NuGet_Push);
+	public static int Main() => Execute<Build>(x => x.Octo_Push);
 
 	protected override void OnBuildCreated()
 	{
@@ -314,9 +314,6 @@ class Build : NukeBuild
 					.SetAssemblyVersion(GitVersion.AssemblySemVer)
 					.SetFileVersion(GitVersion.AssemblySemFileVer)
 					.SetInformationalVersion(GitVersion.InformationalVersion)
-					//.SetAssemblyVersion("1.0.0.0")
-					//.SetFileVersion("1.0.0.0")
-					//.SetInformationalVersion("1.0.0.0")
 					.SetOutput($"{ArtifactsDirectory}/published-app/{p.Name}")
 				);
 			});
@@ -341,7 +338,6 @@ class Build : NukeBuild
 			.SetTitle(p.Name)
 			.SetId(p.Name)
 			.SetVersion(GitVersion.NuGetVersionV2)
-		//.SetVersion("1.0.0.0")
 		);
 		});
 
@@ -369,7 +365,7 @@ class Build : NukeBuild
 
 
 	Target Octo_Create_Release => _ => _
-	//.DependsOn(Octo_Push)
+	.DependsOn(Octo_Push)
 	.Executes(() =>
 	{
 		OctopusCreateRelease(_ => _
@@ -379,8 +375,6 @@ class Build : NukeBuild
 		.SetEnableServiceMessages(true)
 		.SetDefaultPackageVersion(GitVersion.AssemblySemVer)
 		.SetVersion(GitVersion.AssemblySemVer)
-		//.SetDefaultPackageVersion("1.0.0.0")
-		//.SetVersion("1.0.0.0")
 		.SetReleaseNotes("")
 		);
 	});
