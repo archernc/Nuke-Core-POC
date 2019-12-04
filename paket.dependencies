@@ -1,0 +1,18 @@
+version 5.238.1
+
+source https://api.nuget.org/v3/index.json
+
+storage: none
+framework: netcore3.0, netstandard2.0, netstandard2.1
+
+clitool dotnet-xunit
+
+### Latest Version ###
+nuget Moq
+nuget xunit
+nuget xunit.runner.visualstudio
+
+### Restricted Versions ###
+nuget coverlet.msbuild ~> 2.7.0
+nuget Nuke.Common ~> 0.23.4
+nuget NuGet.Packaging.Core ~> 5.3.1

@@ -1,0 +1,5 @@
+﻿coverlet.msbuild
+dotnet-xunit
+Moq
+xunit
+xunit.runner.visualstudio
