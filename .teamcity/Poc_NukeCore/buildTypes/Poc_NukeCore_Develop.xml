@@ -4,7 +4,7 @@
   <description />
   <settings>
     <parameters>
-      <param name="env.Git_Branch" value="%teamcity.build.vcs.branch.Poc_Nuke_HttpsIntegrationGitBirchComScmTpNukeCoreTestGit%" />
+      <param name="env.Git_Branch" value="%teamcity.build.vcs.branch.Poc_NukeCore_HttpsIntegrationGitBirchComScmTpNukeCoreTestGit%" />
     </parameters>
     <build-runners>
       <runner id="RUNNER_8" name="Nuke Build" type="jetbrains_powershell">
@@ -19,7 +19,7 @@
       </runner>
     </build-runners>
     <vcs-settings>
-      <vcs-entry-ref root-id="Poc_Nuke_HttpsIntegrationGitBirchComScmTpNukeCoreTestGit" />
+      <vcs-entry-ref root-id="Poc_NukeCore_HttpsIntegrationGitBirchComScmTpNukeCoreTestGit" />
     </vcs-settings>
     <requirements />
     <build-triggers>

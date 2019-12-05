@@ -8,7 +8,7 @@
         <param name="buildSettings" value="ALWAYS_USE_CURRENT" />
         <param name="credentialsStorageType" value="credentialsJSON" />
         <param name="enabled" value="true" />
-        <param name="rootId" value="Poc_Nuke_HttpsIntegrationGitBirchComScmTpNukeCoreTestGit" />
+        <param name="rootId" value="Poc_NukeCore_HttpsIntegrationGitBirchComScmTpNukeCoreTestGit" />
         <param name="showChanges" value="false" />
       </parameters>
     </extension>
