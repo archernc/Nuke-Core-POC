@@ -353,7 +353,7 @@ class Build : NukeBuild
 		.SetProject(OCTOPUS_PROJECT_NAME)
 		.SetEnableServiceMessages(true)
 		.SetDefaultPackageVersion(GitVersion.NuGetVersionV2)
-		.SetVersion(GitVersion.NuGetVersionV2)
+		.SetVersion($"{GitVersion.NuGetVersionV2}.i")
 		.SetReleaseNotes("")
 		);
 	});
