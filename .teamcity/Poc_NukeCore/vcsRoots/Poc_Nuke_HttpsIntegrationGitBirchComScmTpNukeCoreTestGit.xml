@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vcs-root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="fb409bcd-bdc9-46af-ae0e-d7ce03641c39" type="jetbrains.git" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2018.1/project-config.xsd">
+  <name>https://Integration@git.birch.com/scm/tp/nuke.core.test.git</name>
+  <param name="agentCleanFilesPolicy" value="ALL_UNTRACKED" />
+  <param name="agentCleanPolicy" value="ON_BRANCH_CHANGE" />
+  <param name="authMethod" value="PASSWORD" />
+  <param name="branch" value="refs/heads/develop" />
+  <param name="ignoreKnownHosts" value="true" />
+  <param name="secure:password" value="credentialsJSON:20e3f2a9-ceed-4aca-8f27-c7138f886047" />
+  <param name="submoduleCheckout" value="CHECKOUT" />
+  <param name="teamcity:branchSpec"><![CDATA[+:refs/heads/(feature/*)
++:refs/heads/(review/*)]]></param>
+  <param name="url" value="https://Integration@git.birch.com/scm/tp/nuke.core.test.git" />
+  <param name="useAlternates" value="true" />
+  <param name="username" value="integration" />
+  <param name="usernameStyle" value="USERID" />
+</vcs-root>
+
