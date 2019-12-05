@@ -2,6 +2,7 @@ using Nuke.Common;
 using Nuke.Common.CI;
 using Nuke.Common.CI.TeamCity;
 using Nuke.Common.Execution;
+using Nuke.Common.Git;
 using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
 using Nuke.Common.Tooling;
@@ -42,62 +43,29 @@ class Build : NukeBuild
 
 	public static int Main() => Execute<Build>(x => x.Octo_Create_Release);
 
-	//protected override void OnBuildCreated()
-	//{
-	//	Logger.Info(nameof(OnBuildCreated));
-	//	base.OnBuildCreated();
-	//}
-	//protected override void OnBuildInitialized()
-	//{
-	//	Logger.Info(nameof(OnBuildInitialized));
-	//	base.OnBuildInitialized();
-	//}
-	//protected override void OnBuildFinished()
-	//{
-	//	Logger.Info(nameof(OnBuildFinished));
-	//	base.OnBuildFinished();
-	//}
-	//protected override void OnTargetStart(string target)
-	//{
-	//	Logger.Info(nameof(OnTargetStart));
-	//	base.OnTargetStart(target);
-	//}
-	//protected override void OnTargetAbsent(string target)
-	//{
-	//	Logger.Info(nameof(OnTargetAbsent));
-	//	base.OnTargetAbsent(target);
-	//}
-	//protected override void OnTargetSkipped(string target)
-	//{
-	//	Logger.Info(nameof(OnTargetSkipped));
-	//	base.OnTargetSkipped(target);
-	//}
-	//protected override void OnTargetExecuted(string target)
-	//{
-	//	Logger.Info(nameof(OnTargetExecuted));
-	//	base.OnTargetExecuted(target);
-	//}
-	//protected override void OnTargetFailed(string target)
-	//{
-	//	Logger.Info(nameof(OnTargetFailed));
-	//	base.OnTargetFailed(target);
-	//}
-
-
 	[Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
 	readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
-	//[CI] readonly TeamCity TeamCity;
+	[CI] readonly TeamCity TeamCity;
+	[GitRepository] readonly GitRepository GitRepository;
+
 	[Solution] readonly Solution Solution;
-	//[GitRepository] readonly GitRepository GitRepository;
 	[GitVersion] readonly GitVersion GitVersion;
 
-	// TODO: try to replace the inline locators
+	//TODO: try to replace the inline locators
 	//[LocalExecutable("./.paket/paket.exe")]
 	//readonly Tool Paket;
 
 	AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
 	AbsolutePath SourceDirectory => RootDirectory / "src";
+	AbsolutePath NuGetOutputDirectory => ArtifactsDirectory / "NuGet";
+	AbsolutePath OctopusOutputDirectory => ArtifactsDirectory / "Octo";
+
+	const string NUGET_SERVER_KEY = "oy2cyqeqkfqnzll5f36qj37ojxdvtfyuzaaczn5sfmbpbm";
+	const string NUGET_SERVER_URL = "https://www.nuget.org/api/v2/package";
+	const string OCTOPACK_PUBLISH_APIKEY = "API-IUYK06GRIEZ0CPECQQ7V0FURMY";
+	const string OCTOPUS_DEPLOY_SERVER = "http://icerep01:8081"; //TODO: convert to SSL
+	const string OCTOPUS_PROJECT_NAME = "%system.teamcity.projectName%";
 
 	/// <summary>
 	/// Runs JetBrains.ReSharper code analysis
@@ -213,7 +181,7 @@ class Build : NukeBuild
 	.Produces(CoverageReportArchive)
 	.Executes(() =>
 	{
-		// TODO: Handle error when XML files are not present
+		//TODO: Handle error when XML files are not present
 		ReportGenerator(_ => _
 			//.SetFramework("netcoreapp2.1")
 			.SetReports($"{ArtifactsDirectory}/*.xml")
@@ -241,7 +209,7 @@ class Build : NukeBuild
 	/// </summary>
 	Target NuGet_Pack => _ => _
 	.DependsOn(Test)
-	.Produces($"{ArtifactsDirectory}/NuGet/*.nupkg")
+	.Produces($"{NuGetOutputDirectory}/*.nupkg")
 	.Executes(() =>
 	{
 		PaketPack(_ => _
@@ -249,15 +217,14 @@ class Build : NukeBuild
 			.SetLockDependencies(true)
 			.SetBuildConfiguration(Configuration)
 			.SetPackageVersion(GitVersion.NuGetVersionV2)
-			//.SetPackageVersion("1.0.0.0")
-			.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
+			.SetOutputDirectory(NuGetOutputDirectory)
 		);
 
 		//DotNetPack(_ => _
 		//	.SetProject(Solution)
 		//	.SetNoBuild(ExecutingTargets.Contains(Compile))
 		//	.SetConfiguration(Configuration)
-		//	.SetOutputDirectory($"{ArtifactsDirectory}/NuGet")
+		//	.SetOutputDirectory(NuGetOutputDirectory)
 		//	.SetVersion(GitVersion.NuGetVersionV2)
 		//	//.SetPackageReleaseNotes(GetNuGetReleaseNotes($"{RootDirectory}/CHANGELOG.md", GitRepository))
 		//);
@@ -272,20 +239,20 @@ class Build : NukeBuild
 	.Consumes(NuGet_Pack)
 	.Executes(() =>
 	{
-		var packages = (ArtifactsDirectory / "NuGet").GlobFiles("*.nupkg");
+		var packages = NuGetOutputDirectory.GlobFiles("*.nupkg");
 		if (packages.Any())
 		{
 			DotNetNuGetPush(_ => _
-				.SetApiKey("oy2cyqeqkfqnzll5f36qj37ojxdvtfyuzaaczn5sfmbpbm")
-				.SetSource("https://www.nuget.org/api/v2/package")
+				.SetApiKey(NUGET_SERVER_KEY)
+				.SetSource(NUGET_SERVER_URL)
 				.CombineWith(packages, (_, v) => _.SetTargetPath(v)),
 				degreeOfParallelism: 5,
 				completeOnFailure: true
 			);
 
 			//NuGetPush(_ => _
-			//	.SetApiKey("oy2cyqeqkfqnzll5f36qj37ojxdvtfyuzaaczn5sfmbpbm")
-			//	.SetSource("https://www.nuget.org/api/v2/package")
+			//	.SetApiKey(NUGET_SERVER_KEY)
+			//	.SetSource(NUGET_SERVER_URL)
 			//	.CombineWith(packages, (_, v) => _.SetTargetPath(v)),
 			//	degreeOfParallelism: 5,
 			//	completeOnFailure: true
@@ -293,8 +260,8 @@ class Build : NukeBuild
 
 			//PaketPush(_ => _
 			//	.SetToolPath($"{RootDirectory}/.paket/paket.exe")
-			//	.SetApiKey("oy2cyqeqkfqnzll5f36qj37ojxdvtfyuzaaczn5sfmbpbm")
-			//	.SetUrl("https://www.nuget.org/api/v2/package")
+			//	.SetApiKey(NUGET_SERVER_KEY)
+			//	.SetUrl(NUGET_SERVER_URL)
 			//	.CombineWith(packages, (_, v) => _.SetFile(v)),
 			//	degreeOfParallelism: 5,
 			//	completeOnFailure: true
@@ -333,7 +300,7 @@ class Build : NukeBuild
 	/// </summary>
 	Target Octo_Pack => _ => _
 	.DependsOn(Publish)
-	.Produces($"{ArtifactsDirectory}/Octo/*.nupkg")
+	.Produces($"{OctopusOutputDirectory}/*.nupkg")
 	.Executes(() =>
 	{
 		// Note: Solution.Projects only returns projects with no SolutionFolder property set
@@ -343,15 +310,15 @@ class Build : NukeBuild
 		{
 			OctopusPack(_ => _
 			.SetBasePath(p.Directory)
-			.SetOutputFolder($"{ArtifactsDirectory}/Octo")
+			.SetOutputFolder(OctopusOutputDirectory)
 			.SetTitle(p.Name)
 			.SetId(p.Name)
 			.SetVersion(GitVersion.NuGetVersionV2)
-			.SetOverwrite(true)
+			.SetOverwrite(true) // keeps from failing the build
 		);
 		});
 
-		// TODO: Docker packages may need a different process
+		//TODO: Docker packages may need a different process
 	});
 
 	/// <summary>
@@ -362,12 +329,12 @@ class Build : NukeBuild
 	.Consumes(Octo_Pack)
 	.Executes(() =>
 	{
-		var packages = (ArtifactsDirectory / "Octo").GlobFiles("*.nupkg");
+		var packages = OctopusOutputDirectory.GlobFiles("*.nupkg");
 		if (packages.Any())
 		{
 			OctopusPush(_ => _
-			.SetServer("http://icerep01:8081/")
-			.SetApiKey("API-IUYK06GRIEZ0CPECQQ7V0FURMY")
+			.SetServer(OCTOPUS_DEPLOY_SERVER)
+			.SetApiKey(OCTOPACK_PUBLISH_APIKEY)
 			.EnableReplaceExisting() // keeps from failing the build
 			.CombineWith(packages, (_, v) => _.SetPackage(v))
 			);
@@ -380,9 +347,9 @@ class Build : NukeBuild
 	.Executes(() =>
 	{
 		OctopusCreateRelease(_ => _
-		.SetServer("http://icerep01:8081/")
-		.SetApiKey("API-IUYK06GRIEZ0CPECQQ7V0FURMY")
-		.SetProject("Nuke.Core")
+		.SetServer(OCTOPUS_DEPLOY_SERVER)
+		.SetApiKey(OCTOPACK_PUBLISH_APIKEY)
+		.SetProject(OCTOPUS_PROJECT_NAME)
 		.SetEnableServiceMessages(true)
 		.SetDefaultPackageVersion(GitVersion.NuGetVersionV2)
 		.SetVersion(GitVersion.NuGetVersionV2)
