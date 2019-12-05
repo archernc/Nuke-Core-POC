@@ -1,8 +1,8 @@
 using Nuke.Common;
 using Nuke.Common.CI;
-using Nuke.Common.CI.TeamCity;
+//using Nuke.Common.CI.TeamCity;
 using Nuke.Common.Execution;
-using Nuke.Common.Git;
+//using Nuke.Common.Git;
 using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
 using Nuke.Common.Tooling;
@@ -41,13 +41,13 @@ class Build : NukeBuild
 	///   - Microsoft VisualStudio     https://nuke.build/visualstudio
 	///   - Microsoft VSCode           https://nuke.build/vscode
 
-	public static int Main() => Execute<Build>(x => x.Octo_Create_Release);
+	public static int Main() => Execute<Build>(x => x.Octo_Pack);
 
 	[Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
 	readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
-	[CI] readonly TeamCity TeamCity;
-	[GitRepository] readonly GitRepository GitRepository;
+	//[CI] readonly TeamCity TeamCity;
+	//[GitRepository] readonly GitRepository GitRepository;
 
 	[Solution] readonly Solution Solution;
 	[GitVersion] readonly GitVersion GitVersion;
@@ -65,7 +65,7 @@ class Build : NukeBuild
 	const string NUGET_SERVER_URL = "https://www.nuget.org/api/v2/package";
 	const string OCTOPACK_PUBLISH_APIKEY = "API-IUYK06GRIEZ0CPECQQ7V0FURMY";
 	const string OCTOPUS_DEPLOY_SERVER = "http://icerep01:8081"; //TODO: convert to SSL
-	const string OCTOPUS_PROJECT_NAME = "%system.teamcity.projectName%";
+	readonly string OCTOPUS_PROJECT_NAME = Environment.GetEnvironmentVariable("OCTOPUS_PROJECT_NAME");// ?? "Nuke.Core";
 
 	/// <summary>
 	/// Runs JetBrains.ReSharper code analysis
@@ -344,6 +344,7 @@ class Build : NukeBuild
 
 	Target Octo_Create_Release => _ => _
 	.DependsOn(Octo_Push)
+	.Requires(() => !string.IsNullOrWhiteSpace(OCTOPUS_PROJECT_NAME))
 	.Executes(() =>
 	{
 		OctopusCreateRelease(_ => _
