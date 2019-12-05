@@ -52,20 +52,17 @@ class Build : NukeBuild
 	[Solution] readonly Solution Solution;
 	[GitVersion] readonly GitVersion GitVersion;
 
-	//TODO: try to replace the inline locators
-	//[LocalExecutable("./.paket/paket.exe")]
-	//readonly Tool Paket;
-
 	AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
 	AbsolutePath SourceDirectory => RootDirectory / "src";
 	AbsolutePath NuGetOutputDirectory => ArtifactsDirectory / "NuGet";
 	AbsolutePath OctopusOutputDirectory => ArtifactsDirectory / "Octo";
+	AbsolutePath PublishedOutput => ArtifactsDirectory / "published-app";
 
-	const string NUGET_SERVER_KEY = "";
-	const string NUGET_SERVER_URL = "";
-	const string OCTOPACK_PUBLISH_APIKEY = "";
-	const string OCTOPUS_DEPLOY_SERVER = "";
-	const string OCTOPUS_PROJECT_NAME = "";
+	readonly string NUGET_SERVER_KEY = Environment.GetEnvironmentVariable("NUGET_SERVER_KEY");
+	readonly string NUGET_SERVER_URL = Environment.GetEnvironmentVariable("NUGET_SERVER_URL");
+	readonly string OCTOPACK_PUBLISH_APIKEY = Environment.GetEnvironmentVariable("OCTOPACK_PUBLISH_APIKEY");
+	readonly string OCTOPUS_DEPLOY_SERVER = Environment.GetEnvironmentVariable("OCTOPUS_DEPLOY_SERVER"); //TODO: convert to SSL
+	readonly string OCTOPUS_PROJECT_NAME = Environment.GetEnvironmentVariable("OCTOPUS_PROJECT_NAME");// ?? "Nuke.Core";
 
 	/// <summary>
 	/// Runs JetBrains.ReSharper code analysis
@@ -159,14 +156,6 @@ class Build : NukeBuild
 					)
 				)
 			);
-
-		//ArtifactsDirectory.GlobFiles("*.trx").ForEach(x =>
-		//    Console.WriteLine(x.ToString())
-		//    //AzurePipelines?.PublishTestResults(
-		//    //    type: AzurePipelinesTestResultsType.VSTest,
-		//    //    title: $"{Path.GetFileNameWithoutExtension(x)} ({AzurePipelines.StageDisplayName})",
-		//    //    files: new string[] { x })
-		//    );
 	});
 
 	string CoverageReportDirectory => $"{ArtifactsDirectory}/coverage-report";
@@ -177,30 +166,23 @@ class Build : NukeBuild
 	Target Coverage => _ => _
 	.DependsOn(Test)
 	//.TriggeredBy(Test)
-	.Consumes(Test)
 	.Produces(CoverageReportArchive)
 	.Executes(() =>
 	{
-		//TODO: Handle error when XML files are not present
-		ReportGenerator(_ => _
-			//.SetFramework("netcoreapp2.1")
-			.SetReports($"{ArtifactsDirectory}/*.xml")
-			.SetReportTypes(ReportTypes.Html, ReportTypes.TeamCitySummary, ReportTypes.TextSummary)
-			.SetTargetDirectory(CoverageReportDirectory)
-		);
+		var files = ArtifactsDirectory.GlobFiles("*.xml");
+		if (files.Any())
+		{
+			ReportGenerator(_ => _
+				.SetReports(files.Select(f => f.ToString()).ToArray())
+				.SetReportTypes(ReportTypes.Html, ReportTypes.TeamCitySummary, ReportTypes.TextSummary)
+				.SetTargetDirectory(CoverageReportDirectory)
+			);
 
-		//ArtifactsDirectory.GlobFiles("*.xml").ForEach(x =>
-		//    Console.WriteLine(x.ToString())
-		//    //AzurePipelines?.PublishCodeCoverage(
-		//    //    AzurePipelinesCodeCoverageToolType.Cobertura,
-		//    //    x,
-		//    //    CoverageReportDirectory)
-		//    );
-
-		CompressZip(
-			directory: CoverageReportDirectory,
-			archiveFile: CoverageReportArchive,
-			fileMode: FileMode.Create);
+			CompressZip(
+				directory: CoverageReportDirectory,
+				archiveFile: CoverageReportArchive,
+				fileMode: FileMode.Create);
+		}
 	});
 
 	/// <summary>
@@ -236,7 +218,8 @@ class Build : NukeBuild
 	/// </summary>
 	Target NuGet_Push => _ => _
 	.DependsOn(NuGet_Pack)
-	.Consumes(NuGet_Pack)
+	.Requires(() => !string.IsNullOrWhiteSpace(NUGET_SERVER_KEY))
+	.Requires(() => !string.IsNullOrWhiteSpace(NUGET_SERVER_URL))
 	.Executes(() =>
 	{
 		var packages = NuGetOutputDirectory.GlobFiles("*.nupkg");
@@ -290,7 +273,7 @@ class Build : NukeBuild
 					.SetAssemblyVersion(GitVersion.AssemblySemVer)
 					.SetFileVersion(GitVersion.AssemblySemFileVer)
 					.SetInformationalVersion(GitVersion.InformationalVersion)
-					.SetOutput($"{ArtifactsDirectory}/published-app/{p.Name}")
+					.SetOutput($"{PublishedOutput}/{p.Name}")
 				);
 			});
 	});
@@ -303,21 +286,17 @@ class Build : NukeBuild
 	.Produces($"{OctopusOutputDirectory}/*.nupkg")
 	.Executes(() =>
 	{
-		// Note: Solution.Projects only returns projects with no SolutionFolder property set
-		Solution.AllProjects
-		.Where(p => p.GetProperty("IsPublishable").EqualsOrdinalIgnoreCase("true"))
-		.ForEach(p =>
+		var apps = PublishedOutput.GlobDirectories("*");
+		OctopusPack(_ => _
+		.SetOutputFolder(OctopusOutputDirectory)
+		.SetVersion(GitVersion.NuGetVersionV2)
+		.SetOverwrite(true) // keeps from failing the build
+		.CombineWith(apps, (_, v) =>
 		{
-			OctopusPack(_ => _
-			.SetBasePath(p.Directory)
-			.SetOutputFolder(OctopusOutputDirectory)
-			.SetTitle(p.Name)
-			.SetId(p.Name)
-			.SetVersion(GitVersion.NuGetVersionV2)
-			.SetOverwrite(true) // keeps from failing the build
+			string appName = new DirectoryInfo(v).Name;
+			return _.SetBasePath(v).SetTitle(appName).SetId(appName);
+		})
 		);
-		});
-
 		//TODO: Docker packages may need a different process
 	});
 
@@ -326,7 +305,8 @@ class Build : NukeBuild
 	/// </summary>
 	Target Octo_Push => _ => _
 	.DependsOn(Octo_Pack)
-	.Consumes(Octo_Pack)
+	.Requires(() => !string.IsNullOrWhiteSpace(OCTOPUS_DEPLOY_SERVER))
+	.Requires(() => !string.IsNullOrWhiteSpace(OCTOPACK_PUBLISH_APIKEY))
 	.Executes(() =>
 	{
 		var packages = OctopusOutputDirectory.GlobFiles("*.nupkg");
@@ -344,6 +324,9 @@ class Build : NukeBuild
 
 	Target Octo_Create_Release => _ => _
 	.DependsOn(Octo_Push)
+	.Requires(() => !string.IsNullOrWhiteSpace(OCTOPUS_DEPLOY_SERVER))
+	.Requires(() => !string.IsNullOrWhiteSpace(OCTOPACK_PUBLISH_APIKEY))
+	.Requires(() => !string.IsNullOrWhiteSpace(OCTOPUS_PROJECT_NAME))
 	.Executes(() =>
 	{
 		OctopusCreateRelease(_ => _
@@ -352,8 +335,8 @@ class Build : NukeBuild
 		.SetProject(OCTOPUS_PROJECT_NAME)
 		.SetEnableServiceMessages(true)
 		.SetDefaultPackageVersion(GitVersion.NuGetVersionV2)
-		.SetVersion(GitVersion.NuGetVersionV2)
-		.SetReleaseNotes("")
+		.SetVersion($"{GitVersion.NuGetVersionV2}.i") //auto increment the release version number to allow TC to create duplicate code releases #extreme_edge_case
+		.SetReleaseNotes("") //TODO: grab the commit comments
 		);
 	});
 }
